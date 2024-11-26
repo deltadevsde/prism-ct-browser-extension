@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+    <head>
+        <style>
+            body {
+                width: 600px;
+                padding: 15px;
+                font-family: Arial, sans-serif;
+            }
+            .table {
+                display: flex;
+                flex-direction: column;
+                max-width: 600px;
+                font-family: system-ui, sans-serif;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+            }
+
+            .row {
+                display: flex;
+                border-bottom: 1px solid #ddd;
+            }
+            .row:last-child {
+                border-bottom: none;
+            }
+            .cell {
+                flex: 1;
+                padding: 3px 5px;
+                border-right: 1px solid #ddd;
+                text-overflow: ellipsis;
+            }
+            .cell:last-child {
+                border-right: none;
+            }
+            .name-cell {
+                flex: 5;
+            }
+            .valid-cell {
+                flex: 1;
+            }
+            .date-cell {
+                flex: 5;
+            }
+        </style>
+    </head>
+    <body>
+        <h2>Domain Certificate Validation</h2>
+        <h3 id="domain"></h3>
+        <div id="domain-results" class="table"></div>
+        <script src="popup.js"></script>
+    </body>
+</html>

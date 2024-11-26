@@ -1,0 +1,26 @@
+{
+  "name": "Certificate Transparency with prism",
+  "version": "0.0.1",
+  "manifest_version": 3,
+  "description": "Trust-minimized Certificate Transparency checks using Prism",
+  "icons": {
+    "16": "images/icon16.png",
+    "32": "images/icon32.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
+  },
+  "permissions": ["webRequest", "webRequestBlocking"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "ct@prism.xyz",
+      "strict_min_version": "109.0"
+    }
+  }
+}
