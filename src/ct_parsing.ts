@@ -2,13 +2,15 @@ import { AsnParser, AsnSerializer, OctetString } from "@peculiar/asn1-schema";
 import { Certificate } from "@peculiar/asn1-x509";
 import {
   CertificateTransparency,
-  id_certificateTransparency,
   SignedCertificateTimestamp,
+  id_certificateTransparency,
 } from "@peculiar/asn1-cert-transparency";
 import { CtSignedTreeHead } from "./ct_log_types";
+import { sha256 } from "./hashing";
+
+const MAX_UINT16 = 0xffff;
 
 const SCT_LIST_OID = "1.3.6.1.4.1.11129.2.4.2";
-const MAX_UINT16 = 0xffff;
 
 export function sctsFromCertDer(
   certDer: Uint8Array,
@@ -22,7 +24,24 @@ export function sctsFromCertDer(
   return AsnParser.parse(sctExtensionBytes, CertificateTransparency).items;
 }
 
-export async function leafHashForPreCert(
+export function sthFromBytes(bytes: Uint8Array): CtSignedTreeHead {
+  const view = new DataView(bytes.buffer, 0, bytes.length);
+  const version = view.getUint8(0);
+  const signatureType = view.getUint8(1);
+  const timestamp = Number(view.getBigUint64(2));
+  const treeSize = Number(view.getBigUint64(10));
+  const rootHash = bytes.slice(18, 50);
+
+  return {
+    version,
+    signatureType,
+    timestamp,
+    treeSize,
+    rootHash,
+  };
+}
+
+export async function logEntryBytesForPreCert(
   certDer: Uint8Array,
   issuerDer: Uint8Array,
   sct_time: Date,
@@ -46,9 +65,7 @@ export async function leafHashForPreCert(
     issuerCert.tbsCertificate.subjectPublicKeyInfo,
   );
 
-  const issuerKeyHash = new Uint8Array(
-    await crypto.subtle.digest("SHA-256", issuerPublicKey),
-  );
+  const issuerKeyHash = new Uint8Array(await sha256(issuerPublicKey));
 
   if (issuerKeyHash.length !== 32) {
     console.error("Issuer hash length incorrect", issuerKeyHash.length);
@@ -102,8 +119,5 @@ export async function leafHashForPreCert(
   offset += sct_extensions.length;
 
   // Prepend 0x00 as specified in RFC6962, section 2.1
-  const preimage = new Uint8Array([0, ...leafBytes]);
-  const hash = await crypto.subtle.digest("SHA-256", preimage);
-
-  return new Uint8Array(hash);
+  return new Uint8Array([0x00, ...leafBytes]);
 }
