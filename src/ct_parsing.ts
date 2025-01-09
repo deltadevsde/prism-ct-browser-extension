@@ -5,6 +5,7 @@ import {
   id_certificateTransparency,
   SignedCertificateTimestamp,
 } from "@peculiar/asn1-cert-transparency";
+import { CtSignedTreeHead } from "./ct_log_types";
 
 const SCT_LIST_OID = "1.3.6.1.4.1.11129.2.4.2";
 const MAX_UINT16 = 0xffff;

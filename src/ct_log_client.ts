@@ -1,3 +1,5 @@
+import { CtLogEntry, CtMerkleProof } from "./ct_log_types";
+
 interface CtEntriesResponse {
   entries: CtLogEntry[];
 }

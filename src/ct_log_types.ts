@@ -1,8 +1,8 @@
-interface CtUsableState {
+export interface CtUsableState {
   timestamp: string;
 }
 
-interface CtReadonlyState {
+export interface CtReadonlyState {
   timestamp: string;
   final_tree_head: {
     sha256_root_hash: string;
@@ -10,22 +10,22 @@ interface CtReadonlyState {
   };
 }
 
-interface CtRetiredState {
+export interface CtRetiredState {
   timestamp: string;
 }
 
-interface CtLogState {
+export interface CtLogState {
   usable?: CtUsableState;
   readonly?: CtReadonlyState;
   retired?: CtRetiredState;
 }
 
-interface CtTemporalInterval {
+export interface CtTemporalInterval {
   start_inclusive: string;
   end_exclusive: string;
 }
 
-interface CtLog {
+export interface CtLog {
   description: string;
   log_id: string;
   key: string;
@@ -35,32 +35,33 @@ interface CtLog {
   temporal_interval?: CtTemporalInterval;
 }
 
-interface CtLogOperator {
+export interface CtLogOperator {
   name: string;
   email: string[];
   logs: CtLog[];
   tiled_logs: any[]; // unknown
 }
 
-interface CtLogList {
+export interface CtLogList {
   version: string;
   log_list_timestamp: string;
   operators: CtLogOperator[];
 }
 
-interface CtMerkleProof {
+export interface CtMerkleProof {
   leaf_index: number;
   audit_path: string[];
 }
 
-interface CtLogEntry {
+export interface CtLogEntry {
   leaf_input: string;
   extra_data: string;
 }
 
-interface CtSignedTreeHead {
-  tree_size: number;
+export interface CtSignedTreeHead {
+  version: number;
+  signatureType: number;
   timestamp: number;
-  sha256_root_hash: string;
-  tree_head_signature: string;
+  treeSize: number;
+  rootHash: Uint8Array;
 }
