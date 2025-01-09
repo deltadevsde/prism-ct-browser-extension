@@ -13,9 +13,9 @@ async function run_node() {
   // TODO: Replace with actually running a prism light node
   let i = 0;
   while (true) {
-    await sleep(5000);
+    await sleep(60000);
     i += 1;
-    console.log(`Node is still running ... ${i}`);
+    console.log(`Node is still running ...`);
   }
 }
 
