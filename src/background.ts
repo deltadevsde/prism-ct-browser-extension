@@ -1,8 +1,15 @@
-import { b64DecodeBytes, b64EncodeBytes } from "./conversion";
+import { base64ToBytes, bytesToBase64 } from "./conversion";
 import { CTLogClient } from "./ct_log_client";
 import { CtLogStore } from "./ct_log_store";
-import { leafHashForPreCert, sctsFromCertDer } from "./ct_parsing";
-import { validateProof } from "./ct_proof_validation";
+import {
+  logEntryBytesForPreCert,
+  sctsFromCertDer,
+  sthFromBytes,
+} from "./ct_parsing";
+import { sha256 } from "./hashing";
+import { PrismClient } from "./prism_client";
+import { prismAccountToBincode } from "./prism_serialization";
+import { validateCtProof, validatePrismProof } from "./proof_validation";
 import { DomainVerificationStore } from "./verification_store";
 
 async function sleep(ms: number) {
@@ -20,6 +27,8 @@ async function run_node() {
 }
 
 run_node();
+
+const prism = new PrismClient("http://127.0.0.1:50524");
 
 browser.webRequest.onHeadersReceived.addListener(
   async function (details) {
@@ -59,38 +68,89 @@ browser.webRequest.onHeadersReceived.addListener(
       const scts = sctsFromCertDer(certDer);
 
       for (const sct of scts) {
-        const b64LogId = b64EncodeBytes(new Uint8Array(sct.logId));
+        const b64LogId = bytesToBase64(new Uint8Array(sct.logId));
         const log = ctLogStore.getLogById(b64LogId);
 
         if (log === undefined) {
-          console.log("CT Log", b64LogId, "not found");
+          console.log("CT Log", b64LogId, "not found in official list");
           return;
         }
         console.log("Cert in", log.url);
-        const leafHash = await leafHashForPreCert(
+
+        // Get latest CT-Log Merkle root from prism node
+        const accountRes = await prism.getAccount(log.log_id);
+        if (
+          accountRes.account === undefined ||
+          accountRes.proof.leaf === undefined
+        ) {
+          console.error("CT Log", b64LogId, "not found in prism");
+          return;
+        }
+
+        if (accountRes.account.signed_data.length != 1) {
+          console.error(
+            "Incorrect number of prism entries (",
+            accountRes.account.signed_data.length,
+            ") for Log",
+            b64LogId,
+          );
+          return;
+        }
+
+        // TODO: Does signed_data.key need to be checked?
+        const expectedPrismRootHashHex = (await prism.getCommitment())
+          .commitment;
+
+        // Validate prism Merkle proof
+        // (ensures that prism truly returned the correct CT-Log merkle root)
+        const prismProof = accountRes.proof;
+        const prismValue = prismAccountToBincode(accountRes.account);
+
+        const isPrismProofValid = await validatePrismProof(
+          prismProof,
+          log.log_id,
+          prismValue,
+          expectedPrismRootHashHex,
+        );
+
+        // When prism proof fails, return early
+        if (!isPrismProofValid) {
+          await domainVerificationStore.reportLogVerification(
+            domain,
+            log.description,
+            isPrismProofValid,
+          );
+          return;
+        }
+
+        const b64Sth = accountRes.account.signed_data[0].data;
+        const bytesSth = base64ToBytes(b64Sth);
+        const sth = sthFromBytes(bytesSth);
+
+        // Verify that a CT-Log entry exists for the SCT
+
+        // Construct the correct hash to query a CT-Log entry Merkle proof
+        const logEntryBytes = await logEntryBytesForPreCert(
           certDer,
           issuerDer,
           sct.timestamp,
           new Uint8Array(sct.extensions),
         );
-        const b64LeafHash = b64EncodeBytes(leafHash);
-        console.log(log.description, "B64 Leaf Hash:", b64LeafHash);
+        const leafHash = await sha256(logEntryBytes);
 
         const ctClient = new CTLogClient(log.url);
 
-        // TODO: Acquire that from prism instead
-        const logSth = await ctClient.getSignedTreeHead();
-
-        const proof = await ctClient.getProofByHash(
-          b64LeafHash,
-          logSth.tree_size,
+        const ctProof = await ctClient.getProofByHash(
+          bytesToBase64(leafHash),
+          sth.treeSize,
         );
 
-        const expectedRootHash = b64DecodeBytes(logSth.sha256_root_hash);
-        const verificationResult = await validateProof(
-          proof,
+        // Validate CT-Log Merkle proof
+        // (ensures that the certificate of the request is actually the one submitted to the CT-log)
+        const verificationResult = await validateCtProof(
+          ctProof,
           leafHash,
-          expectedRootHash,
+          sth.rootHash,
         );
 
         await domainVerificationStore.reportLogVerification(
