@@ -1,17 +1,19 @@
 import { CtLogEntry, CtMerkleProof } from "./ct_log_types";
+import { HttpClient } from "./http_client";
 
 interface CtEntriesResponse {
   entries: CtLogEntry[];
 }
 
-export class CTLogClient {
-  private baseUrl: URL;
+export interface CtSignedTreeHeadResponse {
+  tree_size: number;
+  timestamp: number;
+  sha256_root_hash: string;
+  tree_head_signature: string;
+}
 
-  constructor(baseUrl: string | URL) {
-    this.baseUrl = new URL(baseUrl);
-  }
-
-  async getSignedTreeHead(): Promise<CtSignedTreeHead> {
+export class CTLogClient extends HttpClient {
+  async getSignedTreeHead(): Promise<CtSignedTreeHeadResponse> {
     return await this.fetchJson("/ct/v1/get-sth", {});
   }
 
@@ -32,23 +34,5 @@ export class CTLogClient {
       end,
     };
     return await this.fetchJson("/ct/v1/get-entries", params);
-  }
-
-  private async fetchJson<T>(
-    endpoint: string,
-    params: Record<string, string | number>,
-  ): Promise<T> {
-    const url = new URL(this.baseUrl);
-    url.pathname = [url.pathname, endpoint].join("/").replace(/\/+/g, "/");
-    for (const [key, value] of Object.entries(params)) {
-      url.searchParams.append(key, value.toString());
-    }
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      throw new Error(`CT Log request failed: ${response.statusText}`);
-    }
-
-    return await response.json();
   }
 }
