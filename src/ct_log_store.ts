@@ -42,7 +42,6 @@ export class CtLogStore {
   }
 
   private async fetchCtLogList(): Promise<CtLogList> {
-    console.log("Fetching CT log list");
     const response = await fetch(CtLogStore.LOG_LIST_URL);
 
     if (!response.ok) {

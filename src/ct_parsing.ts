@@ -12,6 +12,12 @@ const MAX_UINT16 = 0xffff;
 
 const SCT_LIST_OID = "1.3.6.1.4.1.11129.2.4.2";
 
+/**
+ * Extracts Signed Certificate Timestamps (SCTs) from a certificate's DER encoding.
+ *
+ * @param certDer - The DER-encoded X.509 certificate as a Uint8Array
+ * @returns Array of SignedCertificateTimestamp objects parsed from the certificate's SCT extension
+ */
 export function sctsFromCertDer(
   certDer: Uint8Array,
 ): SignedCertificateTimestamp[] {
@@ -24,6 +30,12 @@ export function sctsFromCertDer(
   return AsnParser.parse(sctExtensionBytes, CertificateTransparency).items;
 }
 
+/**
+ * Parses a Certificate Transparency Signed Tree Head (STH) from its binary representation.
+ *
+ * @param bytes - The binary STH data as a Uint8Array
+ * @returns A parsed CtSignedTreeHead object containing version, signature type, timestamp, tree size and root hash
+ */
 export function sthFromBytes(bytes: Uint8Array): CtSignedTreeHead {
   const view = new DataView(bytes.buffer, 0, bytes.length);
   const version = view.getUint8(0);
@@ -41,6 +53,17 @@ export function sthFromBytes(bytes: Uint8Array): CtSignedTreeHead {
   };
 }
 
+/**
+ * Generates the binary format of a Certificate Transparency log entry for a precertificate.
+ * Follows the format specified in RFC6962 section 3.2.
+ *
+ * @param certDer - The DER-encoded precertificate as a Uint8Array
+ * @param issuerDer - The DER-encoded issuer certificate as a Uint8Array
+ * @param sct_time - The timestamp to use in the SCT
+ * @param sct_extensions - SCT extensions data as a Uint8Array
+ * @returns Promise resolving to a Uint8Array containing the formatted log entry bytes
+ * @throws Will log error if SCT extensions exceed MAX_UINT16 or if issuer key hash length is incorrect
+ */
 export async function logEntryBytesForPreCert(
   certDer: Uint8Array,
   issuerDer: Uint8Array,
